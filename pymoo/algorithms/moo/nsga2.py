@@ -80,6 +80,60 @@ class RankAndCrowdingSurvival(RankAndCrowding):
 # Implementation
 # =========================================================================================================
 
+class RankAndCrowdingCustom(RankAndCrowding):
+        def __init__(self, nds=None, crowding_func="cd"):
+            warnings.warn(
+                    "RankAndCrowdingSurvival is deprecated and will be removed in version 0.8.*; use RankAndCrowding operator instead, which supports several and custom crowding diversity metrics.",
+                    DeprecationWarning, 2
+                )
+            super().__init__(nds, crowding_func)
+        def _do(self, problem,pop,*args,n_survive=None,prob=0.9, **kwargs):
+            # get the objective space values and objects
+            F = pop.get("F").astype(float, copy=False)
+
+            # the final indices of surviving individuals
+            survivors = []
+
+            # do the non-dominated sorting until splitting front
+            fronts = self.nds.do(F, n_stop_if_ranked=n_survive)
+            for k, front in enumerate(fronts):
+                
+                I = np.arange(len(front))
+
+                # current front sorted by crowding distance if splitting
+                if len(survivors) + len(I) > n_survive*prob:
+                    break
+
+                # otherwise take the whole front unsorted
+                else:
+                    # calculate the crowding distance of the front
+                    crowding_of_front = \
+                        self.crowding_func.do(
+                            F[front, :],
+                            n_remove=0
+                        )
+
+                # save rank and crowding in the individual class
+                for j, i in enumerate(front):
+                    pop[i].set("rank", k)
+                    pop[i].set("crowding", crowding_of_front[j])
+
+                # extend the survivors by all or selected individuals
+                survivors.extend(front[I])
+            if len(survivors < n_survive):
+                last = np.array([])
+                for ii,front in enumerate(fronts[k:]):
+                    last = np.concatenate(last,front)
+                    crowding_of_front = \
+                        self.crowding_func.do(
+                            F[front, :],
+                            n_remove=0
+                        )
+                    for j, i in enumerate(front):
+                        pop[i].set("rank", k+ii)
+                        pop[i].set("crowding", crowding_of_front[j])
+                survivors.extend(np.random.choice(last,n_survive-len(survivors)))
+            return pop[survivors]
 
 class NSGA2(GeneticAlgorithm):
 
@@ -89,7 +143,7 @@ class NSGA2(GeneticAlgorithm):
                  selection=TournamentSelection(func_comp=binary_tournament),
                  crossover=SBX(eta=15, prob=0.9),
                  mutation=PM(eta=20),
-                 survival=RankAndCrowding(),
+                 survival=RankAndCrowdingCustom(),
                  output=MultiObjectiveOutput(),
                  **kwargs):
         

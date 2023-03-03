@@ -37,7 +37,7 @@ class Hypervolume(Indicator):
         if self.nds:
             non_dom = NonDominatedSorting().do(F, only_non_dominated_front=True)
             F = np.copy(F[non_dom, :])
-
+        
         # calculate the hypervolume using a vendor library
         hv = _HyperVolume(self.ref_point)
         val = hv.compute(F)

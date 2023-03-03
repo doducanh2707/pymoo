@@ -22,7 +22,6 @@ class ZDT1(ZDT):
         f1 = x[:, 0]
         g = 1 + 9.0 / (self.n_var - 1) * anp.sum(x[:, 1:], axis=1)
         f2 = g * (1 - anp.power((f1 / g), 0.5))
-
         out["F"] = anp.column_stack([f1, f2])
 
 

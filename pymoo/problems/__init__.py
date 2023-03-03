@@ -1,5 +1,6 @@
 
-def get_problem(name, *args, **kwargs):
+from pymoo.problems.nfv.sfc import *
+def get_problem(name,network,requests, *args, **kwargs):
     name = name.lower()
 
     if name.startswith("bbob-"):
@@ -21,7 +22,7 @@ def get_problem(name, *args, **kwargs):
     from pymoo.problems.single import G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13, G14, G15, G16, G17, G18, \
         G19, G20, G21, G22, G23, G24
     from pymoo.problems.dynamic.df import DF1, DF2, DF3, DF4, DF5, DF6, DF7, DF8, DF9, DF10, DF11, DF12, DF13, DF14
-
+    from pymoo.problems.nfv.nfv import NFV
     PROBLEM = {
         'ackley': Ackley,
         'bnh': BNH,
@@ -148,9 +149,11 @@ def get_problem(name, *args, **kwargs):
         'wfg6': WFG6,
         'wfg7': WFG7,
         'wfg8': WFG8,
-        'wfg9': WFG9
+        'wfg9': WFG9,
+        'nfv': NFV,
     }
-
+    if name == "nfv":
+        return NFV(network,requests)
     if name not in PROBLEM:
         raise Exception("Problem not found.")
 
