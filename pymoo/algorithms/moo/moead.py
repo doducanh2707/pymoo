@@ -10,7 +10,9 @@ from pymoo.core.variable import Real, get
 from pymoo.docs import parse_doc_string
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
-from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.operators.mutation.inversion import InversionMutation
+from pymoo.operators.crossover.ox import OrderCrossover
+from pymoo.operators.sampling.rnd import PermutationRandomSampling
 from pymoo.util.display.multi import MultiObjectiveOutput
 from pymoo.util.reference_direction import default_ref_dirs
 
@@ -47,9 +49,11 @@ class MOEAD(LoopwiseAlgorithm, GeneticAlgorithm):
                  n_neighbors=20,
                  decomposition=None,
                  prob_neighbor_mating=0.9,
-                 sampling=FloatRandomSampling(),
-                 crossover=SBX(prob=1.0, eta=20),
-                 mutation=PM(prob_var=None, eta=20),
+                 sampling=PermutationRandomSampling(),
+                 crossover=OrderCrossover(),
+                 mutation=InversionMutation(),
+                #  crossover=SBX(prob=1.0, eta=20),
+                #  mutation=PM(prob_var=None, eta=20),
                  output=MultiObjectiveOutput(),
                  **kwargs):
 

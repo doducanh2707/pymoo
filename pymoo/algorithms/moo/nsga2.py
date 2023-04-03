@@ -5,14 +5,16 @@ from pymoo.algorithms.base.genetic import GeneticAlgorithm
 from pymoo.docs import parse_doc_string
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
+from pymoo.operators.mutation.inversion import InversionMutation
+from pymoo.operators.crossover.ox import OrderCrossover
 from pymoo.operators.survival.rank_and_crowding import RankAndCrowding
-from pymoo.operators.sampling.rnd import FloatRandomSampling
+from pymoo.operators.sampling.rnd import *
 from pymoo.operators.selection.tournament import compare, TournamentSelection
 from pymoo.termination.default import DefaultMultiObjectiveTermination
 from pymoo.util.display.multi import MultiObjectiveOutput
 from pymoo.util.dominator import Dominator
 from pymoo.util.misc import has_feasible
-
+from pymoo.util.randomized_argsort import randomized_argsort
 
 # ---------------------------------------------------------------------------------------------------------
 # Binary Tournament Selection Function
@@ -103,7 +105,7 @@ class RankAndCrowdingCustom(RankAndCrowding):
                 # current front sorted by crowding distance if splitting
                 if len(survivors) + len(I) > n_survive*prob:
                     break
-
+                
                 # otherwise take the whole front unsorted
                 else:
                     # calculate the crowding distance of the front
@@ -120,10 +122,10 @@ class RankAndCrowdingCustom(RankAndCrowding):
 
                 # extend the survivors by all or selected individuals
                 survivors.extend(front[I])
-            if len(survivors < n_survive):
-                last = np.array([])
+            if len(survivors) < n_survive:
+                last = np.array([],dtype= int)
                 for ii,front in enumerate(fronts[k:]):
-                    last = np.concatenate(last,front)
+                    last = np.concatenate((last,front))
                     crowding_of_front = \
                         self.crowding_func.do(
                             F[front, :],
@@ -134,16 +136,98 @@ class RankAndCrowdingCustom(RankAndCrowding):
                         pop[i].set("crowding", crowding_of_front[j])
                 survivors.extend(np.random.choice(last,n_survive-len(survivors)))
             return pop[survivors]
+class KneePointSelection(RankAndCrowding):
+        def __init__(self, nds=None, crowding_func="cd"):
+            super().__init__(nds, crowding_func)
+            self.t = np.zeros(100)
+            self.r = np.ones(100)
+        def _do(self, problem,pop,*args,n_survive=None,prob=0.9, **kwargs):
+            # get the objective space values and objects
+            F = pop.get("F").astype(float, copy=False)
 
+            # the final indices of surviving individuals
+            survivors = []
+
+            # do the non-dominated sorting until splitting front
+            fronts = self.nds.do(F, n_stop_if_ranked=n_survive)
+            for k, front in enumerate(fronts):
+                # current front sorted by crowding distance if splitting
+                if len(survivors) + len(front) > n_survive:
+                    I = []
+                    n_selected = n_survive - len(survivors)
+                    F_i = F[front]
+                    E = np.array(sorted(F_i,key=lambda x: x[0]))[[[0,-1]]]
+                    approx_ideal = F_i.min(axis=0)
+                    approx_nadir = F_i.max(axis =0)
+                    # Tinh vung lan can cua 1 diem
+                    R  = np.zeros(approx_ideal.shape)
+                    self.r[k] = self.r[k] * (np.e ** (-(1-(self.t[k])/0.5)/2))
+                    for j in range(2):
+                        R[j] = (approx_nadir[j]-approx_ideal[j])*self.r[k]
+                    # Xay dung duong noi 2 diem cuc bien va tinh khoang cach 
+                    a = E[1][1] - E[0][1]
+                    b = E[0][0] - E[1][0]
+                    c = a*(E[1][0]) + b*(E[1][1])
+                    dist = [-(a*x[0]+b*x[1]-c)/np.sqrt(a **2 + b ** 2) for x in F_i]
+                    index = np.argsort(dist)
+                    remove = []
+                    # print(dist)
+                    # print(index)
+                    for idx in index:
+                        if len(I)  == n_selected:
+                            break
+                        if idx in remove: 
+                            continue
+                        I.append(idx)
+                        for i in range(len(front)):
+                            if i in remove or i in I:
+                                continue
+                            if np.abs(F_i[i][0] - F_i[idx][0]) <=  R[0] or np.abs(F_i[i][1] - F_i[idx][1]) <=  R[1]: 
+                                remove.append(i)
+                    # Crowding distance
+                    crowding_of_front = \
+                        self.crowding_func.do(
+                            F[front, :],
+                            n_remove=0
+                        )
+                    cd = randomized_argsort(crowding_of_front, order='descending', method='numpy')
+                    if len(I) < n_selected:
+                        for idx in cd:
+                            if len(I)  == n_selected:
+                                break
+                            if idx in I:
+                                continue
+                            I.append(idx)
+                            
+                # otherwise take the whole front unsorted
+                else:
+                    # calculate the crowding distance of the front
+                    crowding_of_front = \
+                        self.crowding_func.do(
+                            F[front, :],
+                            n_remove=0
+                        )
+                    I = np.arange(len(front))
+                # save rank and crowding in the individual class
+                for j, i in enumerate(front):
+                    pop[i].set("rank", k)
+                    pop[i].set("crowding", crowding_of_front[j])
+
+                # extend the survivors by all or selected individuals
+                survivors.extend(front[I])
+            return pop[survivors]
+        
 class NSGA2(GeneticAlgorithm):
 
     def __init__(self,
                  pop_size=100,
-                 sampling=FloatRandomSampling(),
+                 sampling=PermutationRandomSampling(),
                  selection=TournamentSelection(func_comp=binary_tournament),
-                 crossover=SBX(eta=15, prob=0.9),
-                 mutation=PM(eta=20),
-                 survival=RankAndCrowdingCustom(),
+                #  crossover=SBX(eta=15, prob=0.9),                
+                #  mutation=PM(eta=20),
+                crossover=OrderCrossover(),
+                mutation=InversionMutation(),
+                 survival=KneePointSelection(),
                  output=MultiObjectiveOutput(),
                  **kwargs):
         
