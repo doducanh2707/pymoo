@@ -178,7 +178,6 @@ class Algorithm:
     def infill(self):
         if self.problem is None:
             raise Exception("Please call `setup(problem)` before calling next().")
-
         # the first time next is called simply initial the algorithm - makes the interface cleaner
         if not self.is_initialized:
 
@@ -191,7 +190,6 @@ class Algorithm:
         else:
             # request the infill solutions if the algorithm has implemented it
             infills = self._infill()
-
         # set the current generation to the offsprings
         if infills is not None:
             infills.set("n_gen", self.n_iter)

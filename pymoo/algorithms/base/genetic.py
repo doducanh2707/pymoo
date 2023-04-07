@@ -80,20 +80,18 @@ class GeneticAlgorithm(Algorithm):
             self.pop = self.survival.do(self.problem, infills, n_survive=len(infills), algorithm=self, **kwargs)
 
     def _infill(self):
-
         # do the mating using the current population
         off = self.mating.do(self.problem, self.pop, self.n_offsprings, algorithm=self)
-
         # if the mating could not generate any new offspring (duplicate elimination might make that happen)
         if len(off) == 0:
             self.termination.force_termination = True
             return
-
+        
         # if not the desired number of offspring could be created
         elif len(off) < self.n_offsprings:
             if self.verbose:
                 print("WARNING: Mating could not produce the required number of (unique) offsprings!")
-
+        
         return off
 
     def _advance(self, infills=None, **kwargs):

@@ -23,10 +23,8 @@ class Mating(InfillCriterion):
 
         # if the parents for the mating are not provided directly - usually selection will be used
         if parents is None:
-
             # select the parents for the mating - just an index array
             parents = self.selection(problem, pop, n_matings, n_parents=self.crossover.n_parents, **kwargs)
-
         # do the crossover using the parents index and the population - additional data provided if necessary
         off = self.crossover(problem, parents, **kwargs)
 
